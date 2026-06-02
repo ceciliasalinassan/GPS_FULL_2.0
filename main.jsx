@@ -143,7 +143,7 @@ function moneyToNumber(v){
   return isNaN(n)?0:n;
 }
 
-function App(){const[logged,setLogged]=useState(()=>sessionStorage.getItem(SESSION)==="1"),[data,setData]=useState(load),[tab,setTab]=useState("dashboard"),[clock,setClock]=useState(new Date()),[search,setSearch]=useState(""),[showNoPdfOnly,setShowNoPdfOnly]=useState(false),[reportStatus,setReportStatus]=useState(""),[taskText,setTaskText]=useState(""),[historyQuickFilter,setHistoryQuickFilter]=useState(""),[historyMonthFilter,setHistoryMonthFilter]=useState("Todos"),[historyStatusFilter,setHistoryStatusFilter]=useState("Todos"),[alertSearch,setAlertSearch]=useState(""),[reminderStatusFilter,setReminderStatusFilter]=useState("Todas"),[saved,setSaved]=useState("Sin cambios"),[selectedInvoiceId,setSelectedInvoiceId]=useState(null),[selectedMonth,setSelectedMonth]=useState(mk(today())),[invoiceFolderMonth,setInvoiceFolderMonth]=useState("Todas"),[invoiceStatusFilter,setInvoiceStatusFilter]=useState("Vencida"),[invoicePage,setInvoicePage]=useState(1),[chatOpen,setChatOpen]=useState(true),[chatInput,setChatInput]=useState(""),[emailSending,setEmailSending]=useState(false),[chatMessages,setChatMessages]=useState([{role:"ia",text:"Hola, soy la LUXURY GPSRUTA. Pregúntame: ¿quién debe más?, ¿facturas vencidas?, ¿clientes premium?, ¿resumen del mes?, ¿ingresos?, ¿egresos?"}]);
+function App(){const[logged,setLogged]=useState(()=>sessionStorage.getItem(SESSION)==="1"),[data,setData]=useState(load),[tab,setTab]=useState("dashboard"),[clock,setClock]=useState(new Date()),[search,setSearch]=useState(""),[pdfStatusFilter,setPdfStatusFilter]=useState("Todas"),[reportStatus,setReportStatus]=useState(""),[taskText,setTaskText]=useState(""),[historyQuickFilter,setHistoryQuickFilter]=useState(""),[historyMonthFilter,setHistoryMonthFilter]=useState("Todos"),[historyStatusFilter,setHistoryStatusFilter]=useState("Todos"),[alertSearch,setAlertSearch]=useState(""),[reminderStatusFilter,setReminderStatusFilter]=useState("Todas"),[saved,setSaved]=useState("Sin cambios"),[selectedInvoiceId,setSelectedInvoiceId]=useState(null),[selectedMonth,setSelectedMonth]=useState(mk(today())),[invoiceFolderMonth,setInvoiceFolderMonth]=useState("Todas"),[invoiceStatusFilter,setInvoiceStatusFilter]=useState("Vencida"),[invoicePage,setInvoicePage]=useState(1),[chatOpen,setChatOpen]=useState(true),[chatInput,setChatInput]=useState(""),[emailSending,setEmailSending]=useState(false),[chatMessages,setChatMessages]=useState([{role:"ia",text:"Hola, soy la LUXURY GPSRUTA. Pregúntame: ¿quién debe más?, ¿facturas vencidas?, ¿clientes premium?, ¿resumen del mes?, ¿ingresos?, ¿egresos?"}]);
 const[clientForm,setClientForm]=useState({nombre:"",rut:"",giro:"",telefono:"569",email:"",direccion:"",contacto:""}),[invoiceForm,setInvoiceForm]=useState({clienteId:"",factura:"",emision:today(),vencimiento:today(),monto:"",estado:"Pendiente",detalle:""}),[incomeForm,setIncomeForm]=useState({fecha:today(),categoria:"Pago de factura",descripcion:"",monto:"",facturaId:""}),[expenseForm,setExpenseForm]=useState({fecha:today(),categoria:"Pago instalador",descripcion:"",monto:"",debtId:"",numeroFacturaPago:""}),[debtForm,setDebtForm]=useState({fecha:today(),proveedor:"",emailProveedor:"",categoria:"Compra de equipos",descripcion:"",monto:"",vencimiento:today(),estado:"Pendiente"}),[editingClient,setEditingClient]=useState(null),[editingInvoice,setEditingInvoice]=useState(null);
 useEffect(()=>{setSaved("Nube lista")},[data]);
 useEffect(()=>{let t=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(t)},[]);
@@ -191,7 +191,7 @@ const filteredInvoicesByFolder=useMemo(()=>{
   .filter(i=>invoiceFolderMonth==="Todas"||mk(i.vencimiento||i.emision||today())===invoiceFolderMonth)
   .filter(i=>`${i.factura} ${client(i.clienteId)?.nombre||""} ${client(i.clienteId)?.rut||""}`.toLowerCase().includes(search.toLowerCase()))
   .filter(i=>invoiceStatusFilter==="Todas"||ist(i).l===invoiceStatusFilter)
-  .filter(i=>!showNoPdfOnly||!data.attachments?.[i.id])
+  .filter(i=>pdfStatusFilter==="Todas"||(pdfStatusFilter==="Con PDF"&&data.attachments?.[i.id])||(pdfStatusFilter==="Sin PDF"&&!data.attachments?.[i.id]))
   .sort((a,b)=>String(a.factura||"").localeCompare(String(b.factura||""),undefined,{numeric:true}));
 },[data.invoices,invoiceFolderMonth,invoiceStatusFilter,search]);
 const invoicePageSize=50;
@@ -1011,7 +1011,15 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
 <div className="invoiceFolderBar">
   <div><label>Carpeta mes/año</label><select value={invoiceFolderMonth} onChange={e=>setInvoiceFolderMonth(e.target.value)}>{invoiceMonths.map(m=><option key={m} value={m}>{m==="Todas"?"TODAS":ml(m)}</option>)}</select></div>
   <div><label>Estado</label><select value={invoiceStatusFilter} onChange={e=>setInvoiceStatusFilter(e.target.value)}><option>Vencida</option><option>Por vencer</option><option>Todas</option></select></div>
-  <label className="noPdfFilter"><input type="checkbox" checked={showNoPdfOnly} onChange={e=>setShowNoPdfOnly(e.target.checked)}/> Solo sin PDF</label><div className="folderStats"><b>{filteredInvoicesByFolder.length}</b><span>facturas en carpeta</span></div>
+  <div className="pdfFilterButtons">
+      {["Todas","Con PDF","Sin PDF"].map(opt=><button key={opt} className={pdfStatusFilter===opt?"active":""} onClick={()=>setPdfStatusFilter(opt)}>{opt==="Con PDF"?"🟢 Con PDF":opt==="Sin PDF"?"🔴 Sin PDF":"⚪ Todas"}</button>)}
+    </div>
+    <div className="folderStats proStats">
+      <div><b>{filteredInvoicesByFolder.length}</b><span>Filtradas</span></div>
+      <div><b>{filteredInvoicesByFolder.filter(i=>ist(i).l==="Vencida").length}</b><span>Vencidas</span></div>
+      <div><b>{filteredInvoicesByFolder.filter(i=>data.attachments?.[i.id]).length}</b><span>Con PDF</span></div>
+      <div><b>{filteredInvoicesByFolder.filter(i=>!data.attachments?.[i.id]).length}</b><span>Sin PDF</span></div>
+    </div>
 </div>
 <InvTable items={paginatedInvoices} client={client} edit={editInvoice} del={deleteInvoice} data={data} attachFile={attachFile} canSendInvoice={canSendInvoice}/>
 <div className="paginationBar">

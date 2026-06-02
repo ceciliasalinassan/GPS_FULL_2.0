@@ -2055,3 +2055,92 @@ select:focus{
 .cloudNoPdf{border-color:rgba(255,49,49,.35)!important;background:rgba(255,49,49,.08)!important}
 .cloudNoPdf b{color:#ff5757!important}
 .reportStatusBox{margin:8px 0 10px;padding:9px 11px;border-radius:12px;border:1px solid rgba(0,255,210,.25);background:rgba(0,255,210,.06);color:#dff;font-size:12px;font-weight:800}
+
+
+/* FILTRO PDF PROFESIONAL */
+.noPdfFilter{
+  display:none!important;
+}
+
+.pdfFilterButtons{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  padding:8px;
+  border:1px solid rgba(255,212,59,.22);
+  background:rgba(255,212,59,.055);
+  border-radius:16px;
+}
+
+.pdfFilterButtons button{
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.055);
+  color:#eaffff;
+  border-radius:999px;
+  padding:9px 12px;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.2s ease;
+}
+
+.pdfFilterButtons button:hover{
+  transform:translateY(-1px);
+  border-color:rgba(0,255,210,.35);
+}
+
+.pdfFilterButtons button.active{
+  background:linear-gradient(135deg,rgba(0,255,210,.20),rgba(124,252,0,.18));
+  border-color:rgba(0,255,210,.55);
+  color:#00ffd2;
+  box-shadow:0 0 18px rgba(0,255,210,.16);
+}
+
+.proStats{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(80px,1fr));
+  gap:8px;
+  align-items:stretch!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+}
+
+.proStats div{
+  border:1px solid rgba(0,255,210,.20);
+  background:rgba(0,255,210,.055);
+  border-radius:14px;
+  padding:10px;
+  text-align:center;
+}
+
+.proStats b{
+  display:block;
+  color:#00ffd2;
+  font-size:20px;
+  text-shadow:0 0 12px rgba(0,255,210,.45);
+}
+
+.proStats span{
+  display:block;
+  color:#dff;
+  font-size:10px;
+  text-transform:uppercase;
+  margin-top:3px;
+}
+
+.invoiceFolderBar{
+  align-items:stretch!important;
+}
+
+@media(max-width:900px){
+  .proStats{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:600px){
+  .proStats{
+    grid-template-columns:1fr;
+  }
+}
