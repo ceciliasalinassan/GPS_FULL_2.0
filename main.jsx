@@ -105,6 +105,44 @@ class ErrorBoundary extends Component{
   }
 }
 
+
+function normalizeBulkKey(k){
+  return String(k||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+}
+function pickBulk(row,names){
+  const keys=Object.keys(row||{});
+  for(const wanted of names){
+    const normWanted=normalizeBulkKey(wanted);
+    const key=keys.find(k=>normalizeBulkKey(k)===normWanted || normalizeBulkKey(k).includes(normWanted));
+    if(key!==undefined && row[key]!==undefined && row[key]!==null && String(row[key]).trim()!=="") return row[key];
+  }
+  return "";
+}
+function excelDateToISO(v){
+  if(!v)return "";
+  if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+  if(typeof v==="number"){
+    const d=new Date(Math.round((v-25569)*86400*1000));
+    return isNaN(d)?"":d.toISOString().slice(0,10);
+  }
+  const s=String(v).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m){
+    const dd=m[1].padStart(2,"0"), mm=m[2].padStart(2,"0"), yy=m[3];
+    return `${yy}-${mm}-${dd}`;
+  }
+  const d=new Date(s);
+  return isNaN(d)?"":d.toISOString().slice(0,10);
+}
+function moneyToNumber(v){
+  if(v===undefined||v===null)return 0;
+  if(typeof v==="number")return v;
+  const s=String(v).replace(/\$/g,"").replace(/\s/g,"").replace(/\./g,"").replace(",",".");
+  const n=Number(s);
+  return isNaN(n)?0:n;
+}
+
 function App(){const[logged,setLogged]=useState(()=>sessionStorage.getItem(SESSION)==="1"),[data,setData]=useState(load),[tab,setTab]=useState("dashboard"),[clock,setClock]=useState(new Date()),[search,setSearch]=useState(""),[taskText,setTaskText]=useState(""),[historyQuickFilter,setHistoryQuickFilter]=useState(""),[historyMonthFilter,setHistoryMonthFilter]=useState("Todos"),[historyStatusFilter,setHistoryStatusFilter]=useState("Todos"),[alertSearch,setAlertSearch]=useState(""),[reminderStatusFilter,setReminderStatusFilter]=useState("Todas"),[saved,setSaved]=useState("Sin cambios"),[selectedInvoiceId,setSelectedInvoiceId]=useState(null),[selectedMonth,setSelectedMonth]=useState(mk(today())),[invoiceFolderMonth,setInvoiceFolderMonth]=useState("Todas"),[invoiceStatusFilter,setInvoiceStatusFilter]=useState("Vencida"),[invoicePage,setInvoicePage]=useState(1),[chatOpen,setChatOpen]=useState(true),[chatInput,setChatInput]=useState(""),[emailSending,setEmailSending]=useState(false),[chatMessages,setChatMessages]=useState([{role:"ia",text:"Hola, soy la LUXURY GPSRUTA. Pregúntame: ¿quién debe más?, ¿facturas vencidas?, ¿clientes premium?, ¿resumen del mes?, ¿ingresos?, ¿egresos?"}]);
 const[clientForm,setClientForm]=useState({nombre:"",rut:"",giro:"",telefono:"569",email:"",direccion:"",contacto:""}),[invoiceForm,setInvoiceForm]=useState({clienteId:"",factura:"",emision:today(),vencimiento:today(),monto:"",estado:"Pendiente",detalle:""}),[incomeForm,setIncomeForm]=useState({fecha:today(),categoria:"Pago de factura",descripcion:"",monto:"",facturaId:""}),[expenseForm,setExpenseForm]=useState({fecha:today(),categoria:"Pago instalador",descripcion:"",monto:"",debtId:"",numeroFacturaPago:""}),[debtForm,setDebtForm]=useState({fecha:today(),proveedor:"",emailProveedor:"",categoria:"Compra de equipos",descripcion:"",monto:"",vencimiento:today(),estado:"Pendiente"}),[editingClient,setEditingClient]=useState(null),[editingInvoice,setEditingInvoice]=useState(null);
 useEffect(()=>{setSaved("Nube lista")},[data]);
@@ -542,35 +580,66 @@ function exportFinancialReport(){
 }
 
 function importInvoicesExcel(file){
- if(!file)return;
+ if(!file){alert("Seleccione un archivo Excel o CSV para cargar facturas.");return;}
  const reader=new FileReader();
  reader.onload=async (e)=>{
   try{
-   const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
-   const sh=wb.Sheets[wb.SheetNames[0]];
-   const rows=XLSX.utils.sheet_to_json(sh,{defval:""});
-   const norm=(row,keys)=>{for(const k of keys){const f=Object.keys(row).find(x=>x.toLowerCase().trim()===k.toLowerCase());if(f)return String(row[f]||"").trim()}return ""};
-   const findClientId=(rut,nombre)=>{
-    const rc=String(rut||"").replace(/\./g,"").replace(/-/g,"").toLowerCase();
-    let c=data.clients.find(cli=>String(cli.rut||"").replace(/\./g,"").replace(/-/g,"").toLowerCase()===rc);
-    if(c)return c.id;
-    c=data.clients.find(cli=>String(cli.nombre||"").toLowerCase().trim()===String(nombre||"").toLowerCase().trim());
-    return c?.id||"";
-   };
-   const nuevas=rows.map((r,idx)=>{
-    const rut=norm(r,["rut cliente","rut","RUT","RUT CLIENTE"]);
-    const nombre=norm(r,["cliente","nombre cliente","razon social","razón social","RAZON SOCIAL"]);
-    const monto=Number(String(norm(r,["monto","valor","total"])).replace(/\$/g,"").replace(/\./g,"").replace(/,/g,"."))||0;
-    return {id:Date.now()+idx,clienteId:findClientId(rut,nombre),factura:norm(r,["factura","n factura","n° factura","numero factura","número factura","folio"]),emision:norm(r,["emision","emisión","fecha emision","fecha emisión"])||today(),vencimiento:norm(r,["vencimiento","fecha vencimiento","vence"])||today(),monto,estado:norm(r,["estado"])||"Pendiente",detalle:norm(r,["detalle","descripcion","descripción","glosa"])||"Factura cargada masivamente"};
-   }).filter(f=>f.factura&&f.clienteId&&f.monto);
-   if(!nuevas.length){alert("No se encontraron facturas válidas. Revisa columnas: factura, rut cliente o cliente, vencimiento, monto.");return}
-   const {data:insertedRows,error}=await supabase.from("facturas").insert(nuevas.map(toInvoiceDB)).select();
+   if(!supabase){alert("Supabase no está conectado. Revise VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");return;}
+   const ext=file.name.split(".").pop().toLowerCase();
+   let rows=[];
+   if(ext==="csv"){
+    const text=new TextDecoder("utf-8").decode(e.target.result);
+    const lines=text.split(/\r?\n/).filter(x=>x.trim());
+    if(lines.length<2){alert("El CSV no contiene filas de facturas.");return;}
+    const sep=lines[0].includes(";")?";":",";
+    const headers=lines[0].split(sep).map(h=>h.trim());
+    rows=lines.slice(1).map(line=>{const values=line.split(sep);const obj={};headers.forEach((h,i)=>obj[h]=values[i]||"");return obj});
+   }else{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true});
+    const sh=wb.Sheets[wb.SheetNames[0]];
+    rows=XLSX.utils.sheet_to_json(sh,{defval:""});
+   }
+   if(!rows.length){alert("No se encontraron facturas para cargar.");return;}
+
+   const clean=(x)=>String(x||"").replace(/\./g,"").replace(/-/g,"").trim().toLowerCase();
+   const facturas=[];
+   const errores=[];
+   rows.forEach((r,idx)=>{
+    const rut=String(pickBulk(r,["rut cliente","rut","RUT","RUT CLIENTE","cliente rut"])).trim();
+    const nombre=String(pickBulk(r,["cliente","nombre cliente","nombre","razon social","razón social","RAZON SOCIAL"])).trim();
+    const factura=String(pickBulk(r,["factura","n factura","n° factura","numero factura","número factura","numero","folio","fac"])).trim();
+    const monto=moneyToNumber(pickBulk(r,["monto","valor","total","importe"]));
+    const emision=excelDateToISO(pickBulk(r,["emision","emisión","fecha emision","fecha emisión","fecha_emision"]))||today();
+    const vencimiento=excelDateToISO(pickBulk(r,["vencimiento","fecha vencimiento","vence","fecha_vencimiento"]))||"";
+    const estado=String(pickBulk(r,["estado"])).trim()||"Pendiente";
+    const detalle=String(pickBulk(r,["detalle","descripcion","descripción","glosa"])).trim()||"Factura cargada masivamente";
+    let cli=null;
+    if(rut) cli=data.clients.find(c=>clean(c.rut)===clean(rut));
+    if(!cli && nombre) cli=data.clients.find(c=>String(c.nombre||"").toLowerCase().trim()===nombre.toLowerCase());
+
+    if(!factura) errores.push(`Fila ${idx+2}: falta número de factura.`);
+    if(!cli) errores.push(`Fila ${idx+2}: cliente no encontrado (${rut||nombre||"sin dato"}).`);
+    if(!monto) errores.push(`Fila ${idx+2}: monto inválido.`);
+    if(!vencimiento) errores.push(`Fila ${idx+2}: fecha vencimiento inválida.`);
+    if(factura&&cli&&monto&&vencimiento){
+      facturas.push({clienteId:+cli.id,factura,emision,vencimiento,monto,estado,detalle});
+    }
+   });
+
+   if(!facturas.length){
+    alert("No se cargó ninguna factura.\n\nErrores detectados:\n"+errores.slice(0,15).join("\n"));
+    return;
+   }
+   const {data:insertedRows,error}=await supabase.from("facturas").insert(facturas.map(toInvoiceDB)).select();
    if(error) throw error;
-   const facturas=(insertedRows||[]).map(fromInvoiceDB);
-   setData({...data,invoices:[...facturas,...data.invoices]});
-   if(facturas[0])setInvoiceFolderMonth(mk(facturas[0].vencimiento||facturas[0].emision));
-   alert("Facturas cargadas correctamente en Supabase: "+facturas.length);
-  }catch(err){alert("No se pudo leer el Excel. Revisa el formato del archivo.")}
+   const cargadas=(insertedRows||[]).map(fromInvoiceDB);
+   setData({...data,invoices:[...cargadas,...data.invoices]});
+   if(cargadas[0])setInvoiceFolderMonth(mk(cargadas[0].vencimiento||cargadas[0].emision));
+   alert(`Carga finalizada correctamente.\nFacturas cargadas: ${cargadas.length}${errores.length?`\nObservaciones: ${errores.length}`:""}`);
+  }catch(err){
+   console.error("Error importando facturas",err);
+   alert("Error al cargar facturas: "+(err?.message||err));
+  }
  };
  reader.readAsArrayBuffer(file);
 }
@@ -691,21 +760,36 @@ function sendAutoDebt(d){
 }
 
 async function addTask(){
- if(!taskText.trim())return;
- try{const {data:row,error}=await supabase.from("tareas").insert(toTaskDB({text:taskText.trim(),done:false})).select().single();if(error)throw error;setData({...data,tasks:[fromTaskDB(row),...(data.tasks||[])]});setTaskText("")}catch(err){alert("Error al guardar tarea: "+err.message)}
+  try{
+    if(!taskText.trim()){alert("Ingrese una tarea o nota antes de guardar.");return;}
+    if(!supabase){alert("Supabase no está conectado. No se puede guardar la tarea.");return;}
+    const payload={descripcion:taskText.trim(),completada:false};
+    const {data:inserted,error}=await supabase.from("tareas").insert(payload).select().single();
+    if(error) throw error;
+    const task={id:inserted.id,text:inserted.descripcion,done:inserted.completada,createdAt:inserted.created_at};
+    setData({...data,tasks:[task,...(data.tasks||[])]});
+    setTaskText("");
+    alert("Tarea guardada correctamente en Supabase.");
+  }catch(err){
+    console.error("Error al guardar tarea:",err);
+    alert("Error al guardar tarea: "+(err?.message||err));
+  }
 }
 async function toggleTask(id){const t=(data.tasks||[]).find(x=>x.id===id);if(!t)return;await supabase.from("tareas").update({completada:!t.done}).eq("id",id);setData({...data,tasks:(data.tasks||[]).map(x=>x.id===id?{...x,done:!x.done}:x)})}
 async function deleteTask(id){await supabase.from("tareas").delete().eq("id",id);setData({...data,tasks:(data.tasks||[]).filter(t=>t.id!==id)})}
+
+const supabaseStatus = supabase ? "Conectado" : "Desconectado";
+
 if(!logged)return <Login onLogin={()=>setLogged(true)}/>;
 return <div className="app"><aside><Logo/><div className="admin"><User size={24}/><div><b>Administrador</b><p>admin@gpsruta.cl</p></div></div><nav>{[["dashboard","Dashboard",Eye],["clientes","Clientes",Users],["facturas","Facturas por cobrar",FileText],["deudas","Deudas / Facturas por pagar",CreditCard],["ingresos","Ingresos",TrendingUp],["egresos","Egresos",TrendingDown],["alertas","Cobros / Recordatorios",Bell]].map(([v,l,I])=><button key={v} onClick={()=>setTab(v)} className={tab===v?"active":""}><I size={20}/>{l}</button>)}</nav><div className="autosave"><CheckCircle size={20}/><div><b>Guardado automático activo</b><p>Último guardado: {saved}</p></div></div><button className="logout" onClick={()=>{sessionStorage.removeItem(SESSION);setLogged(false)}}><LogOut size={19}/>Cerrar sesión</button></aside><main><header><div className="search"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente, factura o giro..."/></div><div className="chips"><select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} className="monthSelect">{months.map(m=><option key={m} value={m}>{ml(m)}</option>)}</select><span><CalendarDays size={17}/>{clock.toLocaleDateString("es-CL")}</span><span><Clock size={17}/>{clock.toLocaleTimeString("es-CL",{hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span><span className="green"><Save size={17}/>Guardado automático</span></div></header>
 <section className="backupToolbar">
   <button className="backupBtn saveManual" onClick={manualSave}><HardDrive size={17}/>Guardar ahora</button>
   <button className="backupBtn" onClick={exportBackup}><Download size={17}/>Respaldar</button>
-  <label className="backupBtn importBtn"><Upload size={17}/>Importar respaldo<input type="file" accept=".json" onChange={e=>importBackup(e.target.files?.[0])}/></label><button className="backupBtn reportBtn" onClick={exportFinancialReport}>📊 Descargar informe Excel</button><span className="emailConfigured">📧 Correo cobranza: {SENDER_EMAIL}</span><span className={`emailStatus ${emailSending?"sending":""}`}>{emailSending?"📤 Enviando correo...":"✅ Outlook automático listo"}</span>
+  <label className="backupBtn importBtn"><Upload size={17}/>Importar respaldo<input type="file" accept=".json" onChange={e=>importBackup(e.target.files?.[0])}/></label><button className="backupBtn reportBtn" onClick={exportFinancialReport}>📊 Descargar informe Excel</button><span className={`supabaseStatusBadge ${supabase?"ok":"bad"}`}>{supabase?"🟢 Supabase conectado":"🔴 Supabase desconectado"}</span><span className="emailConfigured">📧 Correo cobranza: {SENDER_EMAIL}</span><span className={`emailStatus ${emailSending?"sending":""}`}>{emailSending?"📤 Enviando correo...":"✅ Outlook automático listo"}</span>
 </section>
 <section className="kpis"><K t="Ingresos del mes" v={money(stats.ingresos)} s={ml(selectedMonth)} icon={TrendingUp}/><K t="Egresos del mes" v={money(stats.egresos)} s={ml(selectedMonth)} icon={TrendingDown} tone="red"/><K t="Deudas por pagar" v={money(stats.deudas)} s="Según vencimiento" icon={CreditCard} tone="gold"/><K t="Facturas pendientes" v={money(stats.pend)} s="Por cobrar" icon={FileText} tone="blue"/><K t="Facturas vencidas" v={stats.venc.length} s="Cantidad mensual" icon={AlertTriangle} tone="red"/></section>
 {tab==="dashboard"&&<section className="gridDash dashboard3d"><div className="card chartPro wide holoCard mainHolo"><div className="holoBadge">HOLOGRAPHIC FINANCE PANEL</div><h2>Resumen financiero mensual 3D</h2><div className="chart compact hologramChart"><ResponsiveContainer><ComposedChart data={monthly} margin={{top:12,right:18,left:0,bottom:0}}><CartesianGrid stroke="rgba(255,255,255,.07)" vertical={false}/><XAxis dataKey="mes" stroke="#ccc" tick={{fontSize:12}}/><YAxis stroke="#ccc" tickFormatter={v=>`${Math.round(v/1000000)}M`} tick={{fontSize:12}}/><Tooltip formatter={v=>money(v)} contentStyle={{background:"#050505",border:"1px solid #FFD43B",borderRadius:"12px"}}/><Legend wrapperStyle={{fontSize:12}}/><Bar dataKey="ingresos" name="Ingresos" fill="#7CFC00" radius={[8,8,0,0]} barSize={20}/><Bar dataKey="egresos" name="Egresos" fill="#ff3131" radius={[8,8,0,0]} barSize={20}/><Bar dataKey="deudas" name="Deudas" fill="#FFD43B" radius={[8,8,0,0]} barSize={20}/><Line type="monotone" dataKey="saldo" name="Saldo neto" stroke="#00a3ff" strokeWidth={4} dot={{r:4,fill:"#00a3ff"}} activeDot={{r:7}}/></ComposedChart></ResponsiveContainer></div></div><div className="card chartPro estadoFacturasCard holoCard sideHolo"><div className="holoBadge small">STATUS SCAN</div><h2>Estado facturas del mes</h2><div className="chart donut hologramDonut"><ResponsiveContainer><PieChart><Pie data={pie} dataKey="value" nameKey="name" innerRadius={42} outerRadius={72} label={({name,value})=>`${name}: ${value}`}>{pie.map((_,i)=><Cell key={i} fill={["#7CFC00","#FFD43B","#ff9500","#ff3131"][i]}/>)}</Pie><Tooltip contentStyle={{background:"#050505",border:"1px solid #00a3ff"}}/></PieChart></ResponsiveContainer></div><div className="estadoFacturasNumeros">{pie.map((p,i)=><div className={`estadoItem estado${i}`} key={p.name}><span></span><b>{p.name}</b><strong>{p.value}</strong></div>)}</div></div><div className="card wide holoCard summaryHolo"><div className="holoBadge small">MONTHLY CORE</div><h2>Resumen del mes seleccionado</h2><div className="summaryGrid">{[[money(stats.ingresos),"Ingresos",""],[money(stats.egresos),"Egresos",""],[money(stats.saldo),"Saldo neto",stats.saldo<0?"negativeBalance":""],[money(stats.deudas),"Deudas por pagar",""],[money(stats.pend),"Facturas por cobrar",""],[stats.venc.length,"Facturas vencidas",""]].map(([a,b,cls])=><div key={b} className={cls}><b>{a}</b><span>{b}</span></div>)}</div></div></section>}
-<div className="card wide holoCard aiPanel"><div className="holoBadge small">LUXURY GPSRUTA</div><h2>LUXURY GPSRUTA</h2><div className="aiGrid"><div><b>{aiData.vencidas.length}</b><span>Vencidas últimos 15 días</span></div><div><b>{aiData.porVencer.length}</b><span>Por vencer próximos 15 días</span></div><div><b>{aiData.riesgoCliente.filter(c=>c.riesgo==="ALTO").length}</b><span>Clientes riesgo alto</span></div><div><b>{aiData.riesgoCliente.filter(c=>c.riesgo==="PREMIUM").length}</b><span>Clientes PREMIUM al día</span></div><div><b>{aiData.pendientes2?.length||0}</b><span>Clientes con 2 pendientes</span></div><div><b>{aiData.pendientes3?.length||0}</b><span>Clientes con 3 pendientes</span></div><div><b>{aiData.pendientes4?.length||0}</b><span>Clientes con 4+ pendientes</span></div></div><div className="aiColumns"><div><h3>Sugerencias automáticas</h3>{aiData.sugerencias.map((s,i)=><p key={i}>🤖 {s}</p>)}</div><div><h3>Clientes por riesgo</h3>{aiData.riesgoCliente.slice(0,5).map(c=><p key={c.id}><b className={`risk ${String(c.riesgo).toLowerCase().replace(" ","-")}`}>{c.riesgo}</b> {c.nombre} · {money(c.montoVencido)}</p>)}<h3>Clientes con pendientes</h3>{aiData.riesgoCliente.filter(c=>c.pendientes>=2).slice(0,8).map(c=><p key={`p-${c.id}`}><b className="risk medio">{c.pendientes}</b> {c.nombre} · facturas pendientes</p>)}</div></div>{aiData.vencidas[0]&&<div className="aiMessage"><b>Mensaje sugerido:</b><p>{aiMessage(aiData.vencidas[0])}</p></div>}</div>
+<div className="card wide holoCard aiPanel"><div className="holoBadge small">LUXURY GPSRUTA</div><h2>LUXURY GPSRUTA</h2><div className="aiGrid"><div><b>{aiData.vencidas.length}</b><span>Vencidas últimos 15 días</span></div><div><b>{aiData.porVencer.length}</b><span>Por vencer próximos 15 días</span></div><div><b>{aiData.riesgoCliente.filter(c=>c.riesgo==="PREMIUM").length}</b><span>Clientes PREMIUM al día</span></div></div><div className="aiColumns"><div><h3>Sugerencias automáticas</h3>{aiData.sugerencias.map((s,i)=><p key={i}>🤖 {s}</p>)}</div></div>{aiData.vencidas[0]&&<div className="aiMessage"><b>Mensaje sugerido:</b><p>{aiMessage(aiData.vencidas[0])}</p></div>}</div>
 <div className={`aiChatWidget ${chatOpen?"open":"closed"}`}>
   <button className="aiChatToggle" onClick={()=>setChatOpen(!chatOpen)}><Bot size={20}/>{chatOpen?"Cerrar IA":"Abrir IA"}</button>
   {chatOpen&&<div className="aiChatBox">
@@ -781,7 +865,7 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
   <div className="card holoCard tareasPanel">
     <div className="holoBadge small">TAREAS</div>
     <h2>Block de notas / tareas por hacer</h2>
-    <div className="taskInput"><input value={taskText} onChange={e=>setTaskText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask()}} placeholder="Agregar tarea o nota..."/><button onClick={addTask}>Agregar</button></div>
+    <div className="taskInput"><input value={taskText} onChange={e=>setTaskText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addTask()}} placeholder="Escribir tarea y presionar Agregar..."/><button onClick={addTask}>Agregar</button></div>
     <div className="taskList">{(data.tasks||[]).length?(data.tasks||[]).slice(0,12).map(t=><div className={`taskItem ${t.done?"done":""}`} key={t.id}><button onClick={()=>toggleTask(t.id)}>{t.done?"✅":"⬜"}</button><div><b>{t.text}</b><span>{t.createdAt}</span></div><button className="deleteTask" onClick={()=>deleteTask(t.id)}>✕</button></div>):<p>No hay tareas pendientes.</p>}</div>
   </div>
 </section>}

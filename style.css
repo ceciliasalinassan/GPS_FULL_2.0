@@ -1996,3 +1996,42 @@ select:focus{
 @media(max-width:600px){
   .cloudGrid{grid-template-columns:1fr}
 }
+
+/* Carga masiva facturas corregida: errores visibles y validación de columnas */
+
+
+/* MEJORAS PENDIENTES: SUPABASE STATUS + LIMPIEZA DASHBOARD */
+.supabaseStatusBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:14px;
+  padding:10px 13px;
+  font-weight:900;
+  font-size:12px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.05);
+}
+.supabaseStatusBadge.ok{
+  color:#7CFC00;
+  border-color:rgba(124,252,0,.35);
+  box-shadow:0 0 16px rgba(124,252,0,.12);
+}
+.supabaseStatusBadge.bad{
+  color:#ff5757;
+  border-color:rgba(255,49,49,.38);
+  box-shadow:0 0 16px rgba(255,49,49,.12);
+}
+.supabaseStatusBadge.panel{
+  margin:12px 0;
+  width:max-content;
+}
+
+/* Ocultar secciones duplicadas de clientes por riesgo/pendientes */
+.aiColumns h3,
+.aiColumns p{
+  word-break:break-word;
+}
+.aiColumns h3:has(+ p){
+  margin-top:10px;
+}

@@ -126,3 +126,5 @@ Variables requeridas en Vercel:
 - `VITE_SUPABASE_ANON_KEY`
 
 Panel SUPABASE CLOUD agregado: facturas, clientes, PDFs, espacio estimado y estado de sincronización.
+
+Mejoras pendientes: indicador Supabase, tareas robustas, confirmación de factura y limpieza dashboard.
