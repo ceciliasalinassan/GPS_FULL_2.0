@@ -2165,3 +2165,66 @@ select:focus{
   background:rgba(255,212,59,.08)!important;
   color:#fff4c2!important;
 }
+
+/* Recordatorios siempre activos */
+.send.whatsapp,.send.mail,.icon.whatsapp,.icon.mail{
+  pointer-events:auto!important;
+}
+
+
+/* GUARDADO AUTOMÁTICO EN LA NUBE */
+.cloudSaveIndicator{
+  margin:14px 0;
+}
+.cloudSaveCard{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  border-radius:22px!important;
+  border-color:rgba(0,255,210,.35)!important;
+  background:linear-gradient(145deg,rgba(0,255,210,.08),rgba(0,0,0,.58))!important;
+}
+.cloudSaveCard.ok{
+  box-shadow:0 0 24px rgba(0,255,210,.12)!important;
+}
+.cloudSaveCard.bad{
+  border-color:rgba(255,49,49,.45)!important;
+  background:rgba(255,49,49,.09)!important;
+}
+.cloudIcon{
+  font-size:40px;
+  filter:drop-shadow(0 0 14px rgba(0,255,210,.45));
+}
+.cloudSaveCard h2{
+  margin:0 0 5px!important;
+  color:#00ffd2!important;
+}
+.cloudSaveCard p{
+  margin:0;
+  font-weight:900;
+  color:#ffffff;
+}
+.cloudSaveCard span{
+  display:block;
+  margin-top:4px;
+  color:#FFD43B;
+  font-size:12px;
+  font-weight:800;
+}
+.cloudSaveCard small{
+  display:block;
+  margin-top:4px;
+  color:#dff;
+  font-size:12px;
+}
+.cloudMiniStatus{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid rgba(0,255,210,.28);
+  border-radius:13px;
+  padding:10px 12px;
+  color:#dff;
+  background:rgba(0,255,210,.055);
+  font-size:12px;
+  font-weight:900;
+}
