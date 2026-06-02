@@ -2144,3 +2144,24 @@ select:focus{
     grid-template-columns:1fr;
   }
 }
+
+
+/* ADMINISTRADOR GPSRUTA */
+.adminInfoGPSRuta{margin:14px 0}
+.adminInfoCard{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-color:rgba(255,212,59,.32)!important;
+  background:linear-gradient(145deg,rgba(255,212,59,.08),rgba(0,0,0,.52))!important;
+}
+.adminInfoCard h2{margin:0 0 6px!important;color:#FFD43B!important}
+.adminInfoCard p{margin:0;color:#fff;font-size:16px}
+.adminInfoCard span{color:#00ffd2;font-weight:800}
+
+/* Cobranza con advertencia, no bloqueada */
+.pdfRequiredNotice{
+  border-color:rgba(255,212,59,.35)!important;
+  background:rgba(255,212,59,.08)!important;
+  color:#fff4c2!important;
+}
