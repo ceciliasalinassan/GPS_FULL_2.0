@@ -2037,94 +2037,21 @@ select:focus{
 }
 
 
-/* ESTADO VISIBLE DE CARGA DE FACTURAS */
-.invoiceLoadStatusBox,
-.bulkInvoiceStatusBox{
-  margin:8px 0 12px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,212,59,.28);
-  background:rgba(255,212,59,.07);
-  color:#fff4c2;
-  font-size:12px;
-  font-weight:800;
-  line-height:1.35;
-}
-.invoiceLoadStatusBox.saving,
-.bulkInvoiceStatusBox.saving{
-  border-color:rgba(0,255,210,.38);
-  background:rgba(0,255,210,.08);
-  color:#00ffd2;
-  box-shadow:0 0 18px rgba(0,255,210,.12);
-}
-.invoiceLoadStatusBox.ok,
-.bulkInvoiceStatusBox.ok{
-  border-color:rgba(124,252,0,.40);
-  background:rgba(124,252,0,.09);
-  color:#7CFC00;
-}
-.invoiceLoadStatusBox.bad,
-.bulkInvoiceStatusBox.bad{
-  border-color:rgba(255,49,49,.42);
-  background:rgba(255,49,49,.10);
-  color:#ff5757;
-}
-button:disabled{
-  opacity:.55!important;
-  cursor:not-allowed!important;
-}
-
-
-/* BLOQUEO DE COBRANZA SIN PDF */
-.cloudNoPdf{
-  border-color:rgba(255,49,49,.35)!important;
-  background:rgba(255,49,49,.08)!important;
-}
-.cloudNoPdf b{
-  color:#ff5757!important;
-  text-shadow:0 0 14px rgba(255,49,49,.45)!important;
-}
-.pdfRequiredNotice{
-  margin:8px 0 12px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,49,49,.35);
-  background:rgba(255,49,49,.09);
-  color:#ffd6d6;
-  font-size:12px;
-  font-weight:900;
-}
-.blockedPdf{
-  opacity:.42!important;
-  filter:grayscale(1);
-  border-color:rgba(255,49,49,.45)!important;
-  position:relative;
-}
-.blockedPdf::after{
-  content:"PDF";
-  position:absolute;
-  top:-9px;
-  right:-7px;
-  font-size:8px;
-  color:#ff5757;
-  font-weight:900;
-}
-.noPdfDashboard{
-  margin:12px 0;
-  border-color:rgba(255,49,49,.35)!important;
-  background:rgba(255,49,49,.08)!important;
-}
-.noPdfDashboard b{
-  display:block;
-  font-size:34px;
-  color:#ff5757;
-}
-.noPdfDashboard span{
-  color:#ffd6d6;
-  text-transform:uppercase;
-  font-size:12px;
-}
-
-.reportBtn{
-  font-weight:900;
-}
+/* PDF CONTROL GPS FULL 2.0 */
+.dashboardPdfAlert{margin:14px 0}
+.pdfAlertCard{display:flex;align-items:center;gap:14px;border-radius:22px!important}
+.pdfAlertCard.danger{border-color:rgba(255,49,49,.42)!important;background:rgba(255,49,49,.09)!important}
+.pdfAlertCard.ok{border-color:rgba(124,252,0,.35)!important;background:rgba(124,252,0,.07)!important}
+.pdfAlertIcon{font-size:38px}
+.pdfAlertCard h2{margin:0 0 4px!important}
+.pdfAlertCard p{margin:0;color:#fff;font-weight:900}
+.pdfAlertCard small{color:#dff}
+.pdfRequiredNotice{margin:8px 0 12px;padding:10px 12px;border-radius:14px;border:1px solid rgba(255,49,49,.35);background:rgba(255,49,49,.09);color:#ffd6d6;font-size:12px;font-weight:900}
+.pdfSemaforo{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.12)}
+.pdfSemaforo.green{color:#7CFC00;background:rgba(124,252,0,.08);border-color:rgba(124,252,0,.35)}
+.pdfSemaforo.yellow{color:#FFD43B;background:rgba(255,212,59,.08);border-color:rgba(255,212,59,.35)}
+.pdfSemaforo.red{color:#ff5757;background:rgba(255,49,49,.08);border-color:rgba(255,49,49,.35)}
+.noPdfFilter{display:flex!important;align-items:center;gap:8px;border:1px solid rgba(255,49,49,.28);background:rgba(255,49,49,.06);border-radius:12px;padding:10px;color:#ffd6d6;font-size:12px;font-weight:900}
+.cloudNoPdf{border-color:rgba(255,49,49,.35)!important;background:rgba(255,49,49,.08)!important}
+.cloudNoPdf b{color:#ff5757!important}
+.reportStatusBox{margin:8px 0 10px;padding:9px 11px;border-radius:12px;border:1px solid rgba(0,255,210,.25);background:rgba(0,255,210,.06);color:#dff;font-size:12px;font-weight:800}
