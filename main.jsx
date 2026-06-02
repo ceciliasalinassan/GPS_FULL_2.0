@@ -77,7 +77,7 @@ function Logo(){return <div className="logo"><div className="pin">⌖</div><div>
 function Login({onLogin}){const[p,setP]=useState(""),[e,setE]=useState("");return <div className="loginPage"><form className="loginCard" onSubmit={x=>{x.preventDefault();if(p===PASS){sessionStorage.setItem(SESSION,"1");onLogin()}else setE("Clave incorrecta. Clave demo: 1234")}}><Logo/><h2>Ingreso Seguro</h2><p>Sistema financiero y cobranza</p><div className="loginInput"><Lock size={18}/><input type="password" value={p} onChange={x=>setP(x.target.value)} placeholder="Clave de acceso"/></div>{e&&<div className="error">{e}</div>}<button className="primary full"><ShieldCheck size={18}/>Ingresar</button></form></div>}
 function K({t,v,s,icon:Icon,tone="green"}){return <div className="card kpi"><div className={`kpiIcon ${tone}`}><Icon size={32}/></div><div><small>{t}</small><h3>{v}</h3><p>{s}</p></div></div>}
 function Fields({obj,set,fields}){return <div className="formGrid">{fields.map(f=><input key={f} value={obj[f]||""} onChange={e=>set({...obj,[f]:e.target.value})} placeholder={f.toUpperCase()} type={["fecha","emision","vencimiento"].includes(f)?"date":f==="monto"?"number":"text"}/>)}</div>}
-function InvTable({items,client,edit,del,data={},attachFile=()=>{},canSendInvoice=()=>true}){return <div className="tableWrap"><table><thead><tr><th>Factura</th><th>Cliente</th><th>Vence</th><th>Mes/Año</th><th>Monto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{items.map(i=>{let c=client(i.clienteId),s=ist(i),Icon=s.I;return <tr key={i.id}><td><b>{i.factura}</b></td><td>{c?.nombre}</td><td>{i.vencimiento}</td><td>{ml(mk(i.vencimiento))}</td><td>{money(i.monto)}</td><td><span className={`status ${s.c}`}><Icon size={14}/>{s.l}</span></td><td><div className="actions"><label className="icon attachMini" title="Adjuntar factura"><Paperclip size={17}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onChange={e=>attachFile(i.id,e.target.files?.[0])}/></label><a className="icon whatsapp" title="Recordatorio WhatsApp" href={waReminder(i,c)} target="_blank"><W/></a><a className="icon mail" title="Recordatorio correo manual" href={emailReminder(i,c)}><Mail size={17}/></a><button className="icon autoMailIcon" title="Recordatorio automático Outlook" onClick={()=>sendAutoReminder(i,c)}>AUTO</button><button className={`icon autoInvoiceIcon ${!data.attachments?.[i.id]?"disabled":""}`} title="Enviar factura automática Outlook" onClick={()=>sendAutoInvoice(i,c)}>PDF</button><a className={`icon invoiceSend ${!data.attachments?.[i.id]?"disabled":""}`} title="Enviar factura WhatsApp" href="#" onClick={e=>{e.preventDefault();handleWhatsAppInvoice(i,c)}}>FAC</a><button className="icon edit" onClick={()=>edit(i)}><Edit size={17}/></button><button className="icon trash" onClick={()=>del(i.id)}><Trash2 size={17}/></button>{data.attachments?.[i.id]?<span className={`attachedOk pdfIndicator ${data.attachments[i.id].sent?"sent":""}`}>{data.attachments[i.id].sent?"PDF enviado":"PDF adjunto"}</span>:<span className="attachedOk pdfIndicator missing">Sin PDF</span>}</div></td></tr>})}</tbody></table></div>}
+function InvTable({items,client,edit,del,data={},attachFile=()=>{},canSendInvoice=()=>true}){return <div className="tableWrap"><table><thead><tr><th>Factura</th><th>Cliente</th><th>Vence</th><th>Mes/Año</th><th>Monto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{items.map(i=>{let c=client(i.clienteId),s=ist(i),Icon=s.I;return <tr key={i.id}><td><b>{i.factura}</b></td><td>{c?.nombre}</td><td>{i.vencimiento}</td><td>{ml(mk(i.vencimiento))}</td><td>{money(i.monto)}</td><td><span className={`status ${s.c}`}><Icon size={14}/>{s.l}</span></td><td><div className="actions"><label className="icon attachMini" title="Adjuntar factura"><Paperclip size={17}/><input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" onChange={e=>attachFile(i.id,e.target.files?.[0])}/></label><a className={`icon whatsapp ${!data.attachments?.[i.id]?"blockedPdf":""}`} title="Recordatorio WhatsApp" href="#" onClick={e=>{e.preventDefault();if(requirePdfForCobranza(i))window.open(waReminder(i,c),"_blank")}}><W/></a><a className={`icon mail ${!data.attachments?.[i.id]?"blockedPdf":""}`} title="Recordatorio correo manual" href="#" onClick={e=>{e.preventDefault();if(requirePdfForCobranza(i))window.location.href=emailReminder(i,c)}}><Mail size={17}/></a><button className="icon autoMailIcon" title="Recordatorio automático Outlook" onClick={()=>{if(requirePdfForCobranza(i))sendAutoReminder(i,c)}}>AUTO</button><button className={`icon autoInvoiceIcon ${!data.attachments?.[i.id]?"disabled":""}`} title="Enviar factura automática Outlook" onClick={()=>sendAutoInvoice(i,c)}>PDF</button><a className={`icon invoiceSend ${!data.attachments?.[i.id]?"disabled":""}`} title="Enviar factura WhatsApp" href="#" onClick={e=>{e.preventDefault();handleWhatsAppInvoice(i,c)}}>FAC</a><button className="icon edit" onClick={()=>edit(i)}><Edit size={17}/></button><button className="icon trash" onClick={()=>del(i.id)}><Trash2 size={17}/></button>{data.attachments?.[i.id]?<span className={`attachedOk pdfIndicator ${data.attachments[i.id].sent?"sent":""}`}>{data.attachments[i.id].sent?"PDF enviado":"PDF adjunto"}</span>:<span className="attachedOk pdfIndicator missing">Sin PDF</span>}</div></td></tr>})}</tbody></table></div>}
 
 class ErrorBoundary extends Component{
   constructor(props){
@@ -85,7 +85,8 @@ class ErrorBoundary extends Component{
     this.state={hasError:false,error:null};
   }
   static getDerivedStateFromError(error){
-    return {hasError:true,error};
+    const facturasSinPdf=(data.invoices||[]).filter(i=>ist(i).l!=="Pagada"&&!data.attachments?.[i.id]).length;
+  return {hasError:true,error};
   }
   componentDidCatch(error,info){
     console.error("GPSRUTA Error:",error,info);
@@ -143,7 +144,7 @@ function moneyToNumber(v){
   return isNaN(n)?0:n;
 }
 
-function App(){const[logged,setLogged]=useState(()=>sessionStorage.getItem(SESSION)==="1"),[data,setData]=useState(load),[tab,setTab]=useState("dashboard"),[clock,setClock]=useState(new Date()),[search,setSearch]=useState(""),[taskText,setTaskText]=useState(""),[historyQuickFilter,setHistoryQuickFilter]=useState(""),[historyMonthFilter,setHistoryMonthFilter]=useState("Todos"),[historyStatusFilter,setHistoryStatusFilter]=useState("Todos"),[alertSearch,setAlertSearch]=useState(""),[reminderStatusFilter,setReminderStatusFilter]=useState("Todas"),[saved,setSaved]=useState("Sin cambios"),[selectedInvoiceId,setSelectedInvoiceId]=useState(null),[selectedMonth,setSelectedMonth]=useState(mk(today())),[invoiceFolderMonth,setInvoiceFolderMonth]=useState("Todas"),[invoiceStatusFilter,setInvoiceStatusFilter]=useState("Vencida"),[invoicePage,setInvoicePage]=useState(1),[chatOpen,setChatOpen]=useState(true),[chatInput,setChatInput]=useState(""),[emailSending,setEmailSending]=useState(false),[chatMessages,setChatMessages]=useState([{role:"ia",text:"Hola, soy la LUXURY GPSRUTA. Pregúntame: ¿quién debe más?, ¿facturas vencidas?, ¿clientes premium?, ¿resumen del mes?, ¿ingresos?, ¿egresos?"}]);
+function App(){const[logged,setLogged]=useState(()=>sessionStorage.getItem(SESSION)==="1"),[data,setData]=useState(load),[tab,setTab]=useState("dashboard"),[clock,setClock]=useState(new Date()),[search,setSearch]=useState(""),[invoiceFeedback,setInvoiceFeedback]=useState(""),[invoiceSaving,setInvoiceSaving]=useState(false),[bulkInvoiceFeedback,setBulkInvoiceFeedback]=useState(""),[bulkInvoiceLoading,setBulkInvoiceLoading]=useState(false),[taskText,setTaskText]=useState(""),[historyQuickFilter,setHistoryQuickFilter]=useState(""),[historyMonthFilter,setHistoryMonthFilter]=useState("Todos"),[historyStatusFilter,setHistoryStatusFilter]=useState("Todos"),[alertSearch,setAlertSearch]=useState(""),[reminderStatusFilter,setReminderStatusFilter]=useState("Todas"),[saved,setSaved]=useState("Sin cambios"),[selectedInvoiceId,setSelectedInvoiceId]=useState(null),[selectedMonth,setSelectedMonth]=useState(mk(today())),[invoiceFolderMonth,setInvoiceFolderMonth]=useState("Todas"),[invoiceStatusFilter,setInvoiceStatusFilter]=useState("Vencida"),[invoicePage,setInvoicePage]=useState(1),[chatOpen,setChatOpen]=useState(true),[chatInput,setChatInput]=useState(""),[emailSending,setEmailSending]=useState(false),[chatMessages,setChatMessages]=useState([{role:"ia",text:"Hola, soy la LUXURY GPSRUTA. Pregúntame: ¿quién debe más?, ¿facturas vencidas?, ¿clientes premium?, ¿resumen del mes?, ¿ingresos?, ¿egresos?"}]);
 const[clientForm,setClientForm]=useState({nombre:"",rut:"",giro:"",telefono:"569",email:"",direccion:"",contacto:""}),[invoiceForm,setInvoiceForm]=useState({clienteId:"",factura:"",emision:today(),vencimiento:today(),monto:"",estado:"Pendiente",detalle:""}),[incomeForm,setIncomeForm]=useState({fecha:today(),categoria:"Pago de factura",descripcion:"",monto:"",facturaId:""}),[expenseForm,setExpenseForm]=useState({fecha:today(),categoria:"Pago instalador",descripcion:"",monto:"",debtId:"",numeroFacturaPago:""}),[debtForm,setDebtForm]=useState({fecha:today(),proveedor:"",emailProveedor:"",categoria:"Compra de equipos",descripcion:"",monto:"",vencimiento:today(),estado:"Pendiente"}),[editingClient,setEditingClient]=useState(null),[editingInvoice,setEditingInvoice]=useState(null);
 useEffect(()=>{setSaved("Nube lista")},[data]);
 useEffect(()=>{let t=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(t)},[]);
@@ -278,6 +279,7 @@ const cloudStats=useMemo(()=>{
     mb,
     pct,
     status:"Operativo",
+    facturasSinPdf,
     lastSync:new Date().toLocaleString("es-CL",{hour12:false})
   };
 },[data]);
@@ -309,7 +311,9 @@ async function deleteClient(id){
  try{await supabase.from("facturas").delete().eq("cliente_id",id);await supabase.from("clientes").delete().eq("id",id);setData({...data,clients:data.clients.filter(c=>c.id!==id),invoices:data.invoices.filter(i=>+i.clienteId!==+id)})}catch(err){alert("Error al eliminar cliente: "+err.message)}
 }
 async function saveInvoice(){
-if(!invoiceForm.clienteId||!invoiceForm.factura||!invoiceForm.monto){alert("Complete cliente, número de factura y monto.");return;}
+setInvoiceFeedback("");setInvoiceSaving(true);
+try{
+if(!invoiceForm.clienteId||!invoiceForm.factura||!invoiceForm.monto){alert("Complete cliente, número de factura y monto.");setInvoiceSaving(false);return;}
 const duplicated=data.invoices.some(i=>String(i.factura).trim().toLowerCase()===String(invoiceForm.factura).trim().toLowerCase()&&i.id!==editingInvoice);
 if(duplicated&&!confirm("Esta factura ya existe. ¿Desea guardarla igualmente?"))return;
 try{
@@ -319,7 +323,10 @@ try{
  let nextAttachments={...(data.attachments||{})};
  if(saved.estado==="Pagada"){await deleteAttachment(saved.id,nextAttachments[saved.id]);delete nextAttachments[saved.id];}
  setData({...data,attachments:nextAttachments,invoices:editingInvoice?data.invoices.map(i=>i.id===editingInvoice?saved:i):[saved,...data.invoices]});
+setInvoiceFeedback("✅ Factura cargada correctamente en Supabase.");
  setEditingInvoice(null);setInvoiceFolderMonth(mk(saved.vencimiento||saved.emision));setInvoiceForm({clienteId:"",factura:"",emision:today(),vencimiento:today(),monto:"",estado:"Pendiente",detalle:""});
+
+}catch(err){console.error("Error al guardar factura:",err);setInvoiceFeedback("❌ Error al cargar factura: "+(err?.message||err));alert("Error al cargar factura: "+(err?.message||err));}finally{setInvoiceSaving(false);}
 }catch(err){alert("Error al guardar factura en Supabase: "+err.message)}
 }
 function editInvoice(i){setEditingInvoice(i.id);setInvoiceForm({...i,clienteId:String(i.clienteId)});setTab("facturas")}
@@ -780,12 +787,224 @@ async function deleteTask(id){await supabase.from("tareas").delete().eq("id",id)
 
 const supabaseStatus = supabase ? "Conectado" : "Desconectado";
 
+
+function requirePdfForCobranza(inv){
+  if(!inv)return false;
+  const hasPdf=!!data.attachments?.[inv.id];
+  if(!hasPdf){
+    alert("No se puede enviar cobranza: debe adjuntar el PDF de la factura primero.");
+    return false;
+  }
+  return true;
+}
+
+
+function exportExcelCompletoGPSRUTA(){
+  try{
+    const now=new Date();
+    const fechaGeneracion=now.toLocaleString("es-CL",{hour12:false});
+    const diasVencidos=(f)=>{
+      const d=days(f.vencimiento||f.fecha_vencimiento);
+      return d<0?Math.abs(d):0;
+    };
+    const facturaEstado=(f)=>ist(f).l;
+    const clienteById=(id)=>client(id)||{};
+    const facturasAll=(data.invoices||[]);
+    const clientesAll=(data.clients||[]);
+    const ingresosAll=(data.incomes||[]);
+    const egresosAll=(data.expenses||[]);
+    const deudasAll=(data.debts||[]);
+    const tareasAll=(data.tasks||[]);
+    const adjuntos=data.attachments||{};
+
+    const totalFacturado=facturasAll.reduce((s,f)=>s+(+f.monto||0),0);
+    const totalCobrado=facturasAll.filter(f=>facturaEstado(f)==="Pagada").reduce((s,f)=>s+(+f.monto||0),0);
+    const totalPendiente=facturasAll.filter(f=>facturaEstado(f)!=="Pagada").reduce((s,f)=>s+(+f.monto||0),0);
+    const totalVencido=facturasAll.filter(f=>facturaEstado(f)==="Vencida").reduce((s,f)=>s+(+f.monto||0),0);
+    const totalIngresos=ingresosAll.reduce((s,i)=>s+(+i.monto||0),0);
+    const totalEgresos=egresosAll.reduce((s,e)=>s+(+e.monto||0),0);
+    const facturasConPdf=facturasAll.filter(f=>!!adjuntos[f.id]).length;
+    const facturasSinPdf=facturasAll.filter(f=>facturaEstado(f)!=="Pagada"&&!adjuntos[f.id]).length;
+
+    const dashboard=[
+      {"Indicador":"Fecha generación","Valor":fechaGeneracion},
+      {"Indicador":"Sistema","Valor":"GPSRUTA CLOUD / LUXURY GPSRUTA"},
+      {"Indicador":"Total facturado","Valor":totalFacturado},
+      {"Indicador":"Total cobrado","Valor":totalCobrado},
+      {"Indicador":"Total pendiente por cobrar","Valor":totalPendiente},
+      {"Indicador":"Total vencido","Valor":totalVencido},
+      {"Indicador":"Facturas por vencer","Valor":facturasAll.filter(f=>facturaEstado(f)==="Por vencer").length},
+      {"Indicador":"Facturas vencidas","Valor":facturasAll.filter(f=>facturaEstado(f)==="Vencida").length},
+      {"Indicador":"Facturas con PDF","Valor":facturasConPdf},
+      {"Indicador":"Facturas sin PDF","Valor":facturasSinPdf},
+      {"Indicador":"Clientes activos","Valor":clientesAll.length},
+      {"Indicador":"Ingresos totales","Valor":totalIngresos},
+      {"Indicador":"Egresos totales","Valor":totalEgresos},
+      {"Indicador":"Saldo neto","Valor":totalIngresos-totalEgresos}
+    ];
+
+    const facturas=facturasAll
+      .slice()
+      .sort((a,b)=>String(a.factura||"").localeCompare(String(b.factura||""),undefined,{numeric:true}))
+      .map(f=>{
+        const c=clienteById(f.clienteId);
+        const pdf=adjuntos[f.id];
+        return {
+          "Cliente":c.nombre||"",
+          "RUT":c.rut||"",
+          "Giro":c.giro||"",
+          "N° Factura":f.factura||"",
+          "Fecha emisión":f.emision||"",
+          "Fecha vencimiento":f.vencimiento||"",
+          "Mes/Año":ml(mk(f.vencimiento||f.emision||today())),
+          "Monto":Number(f.monto||0),
+          "Estado":facturaEstado(f),
+          "Días vencidos":diasVencidos(f),
+          "PDF adjunto":pdf?"Sí":"No",
+          "Nombre PDF":pdf?.name||"",
+          "Fecha carga PDF":pdf?.attachedAt||"",
+          "PDF enviado":pdf?.sent?"Sí":"No",
+          "Fecha envío PDF":pdf?.sentAt||"",
+          "Detalle":f.detalle||""
+        };
+      });
+
+    const clientes=clientesAll.map(c=>{
+      const inv=facturasAll.filter(f=>+f.clienteId===+c.id);
+      const deuda=inv.filter(f=>facturaEstado(f)!=="Pagada").reduce((s,f)=>s+(+f.monto||0),0);
+      const vencidas=inv.filter(f=>facturaEstado(f)==="Vencida").length;
+      const clasificacion=deuda===0?"PREMIUM":vencidas>=4?"ALTO RIESGO":vencidas===3?"MEDIO RIESGO":vencidas===2?"BAJO RIESGO":"NORMAL";
+      return {
+        "Nombre":c.nombre||"",
+        "RUT":c.rut||"",
+        "Giro":c.giro||"",
+        "Teléfono":c.telefono||"",
+        "Email":c.email||"",
+        "Dirección":c.direccion||"",
+        "Contacto":c.contacto||"",
+        "Total facturas":inv.length,
+        "Facturas vencidas":vencidas,
+        "Total deuda":deuda,
+        "Clasificación":clasificacion
+      };
+    });
+
+    const cobranza=facturasAll
+      .filter(f=>facturaEstado(f)!=="Pagada")
+      .sort((a,b)=>diasVencidos(b)-diasVencidos(a))
+      .map(f=>{
+        const c=clienteById(f.clienteId);
+        const pdf=adjuntos[f.id];
+        return {
+          "Prioridad":facturaEstado(f)==="Vencida"?"ALTA":"MEDIA",
+          "Cliente":c.nombre||"",
+          "RUT":c.rut||"",
+          "N° Factura":f.factura||"",
+          "Vencimiento":f.vencimiento||"",
+          "Monto":Number(f.monto||0),
+          "Estado":facturaEstado(f),
+          "Días vencidos":diasVencidos(f),
+          "PDF obligatorio":pdf?"Cumple":"Falta PDF",
+          "WhatsApp":c.telefono||"",
+          "Correo":c.email||""
+        };
+      });
+
+    const ingresos=ingresosAll.map(i=>({
+      "Fecha":i.fecha||"",
+      "Mes/Año":ml(mk(i.fecha||today())),
+      "Categoría":i.categoria||"",
+      "Descripción":i.descripcion||"",
+      "Monto":Number(i.monto||0),
+      "Factura vinculada":i.facturaId||""
+    }));
+
+    const egresos=egresosAll.map(e=>({
+      "Fecha":e.fecha||"",
+      "Mes/Año":ml(mk(e.fecha||today())),
+      "Categoría":e.categoria||"",
+      "Descripción":e.descripcion||"",
+      "Monto":Number(e.monto||0),
+      "Factura/Deuda vinculada":e.deudaId||e.facturaId||""
+    }));
+
+    const deudas=deudasAll.map(d=>({
+      "Fecha registro":d.fecha||"",
+      "Proveedor":d.proveedor||"",
+      "Email proveedor":d.emailProveedor||"",
+      "Categoría":d.categoria||"",
+      "Descripción":d.descripcion||"",
+      "Vencimiento":d.vencimiento||"",
+      "Mes/Año":ml(mk(d.vencimiento||d.fecha||today())),
+      "Estado":d.estado||"",
+      "Monto":Number(d.monto||0)
+    }));
+
+    const tareas=tareasAll.map(t=>({
+      "Tarea / Nota":t.text||t.descripcion||"",
+      "Estado":t.done||t.completada?"Completada":"Pendiente",
+      "Fecha creación":t.createdAt||t.created_at||"",
+      "ID":t.id||""
+    }));
+
+    const adjuntosSheet=facturasAll.map(f=>{
+      const c=clienteById(f.clienteId);
+      const pdf=adjuntos[f.id];
+      return {
+        "N° Factura":f.factura||"",
+        "Cliente":c.nombre||"",
+        "RUT":c.rut||"",
+        "PDF adjunto":pdf?"Sí":"No",
+        "Nombre archivo":pdf?.name||"",
+        "Tamaño bytes":pdf?.size||0,
+        "Fecha carga":pdf?.attachedAt||"",
+        "Enviado":pdf?.sent?"Sí":"No",
+        "Fecha envío":pdf?.sentAt||"",
+        "Estado factura":facturaEstado(f)
+      };
+    });
+
+    const auditoria=[
+      {"Fecha/Hora":fechaGeneracion,"Acción":"Informe Excel completo generado","Usuario":"GPSRUTA","Detalle":"Exportación completa de base de datos"},
+      {"Fecha/Hora":fechaGeneracion,"Acción":"Control PDF","Usuario":"GPSRUTA","Detalle":`Facturas sin PDF: ${facturasSinPdf}`},
+      {"Fecha/Hora":fechaGeneracion,"Acción":"Control financiero","Usuario":"GPSRUTA","Detalle":`Saldo neto: ${totalIngresos-totalEgresos}`}
+    ];
+
+    const wb=XLSX.utils.book_new();
+    const sheets=[
+      ["Dashboard Ejecutivo",dashboard],
+      ["Facturas",facturas],
+      ["Clientes",clientes],
+      ["Cobranza",cobranza],
+      ["Ingresos",ingresos],
+      ["Egresos",egresos],
+      ["Deudas",deudas],
+      ["Tareas",tareas],
+      ["Adjuntos PDF",adjuntosSheet],
+      ["Auditoría GPSRUTA",auditoria]
+    ];
+
+    sheets.forEach(([name,rows])=>{
+      const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{"Sin datos":"No hay información registrada"}]);
+      const range=XLSX.utils.decode_range(ws["!ref"]);
+      ws["!autofilter"]={ref:ws["!ref"]};
+      ws["!cols"]=Array(range.e.c+1).fill(0).map(()=>({wch:22}));
+      XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));
+    });
+
+    XLSX.writeFile(wb,`GPSRUTA_INFORME_COMPLETO_${today()}_${now.toLocaleTimeString("es-CL",{hour12:false}).replaceAll(":","-")}.xlsx`);
+  }catch(err){
+    console.error("Error informe completo:",err);
+    alert("Error al generar informe Excel completo: "+(err?.message||err));
+  }
+}
+
 if(!logged)return <Login onLogin={()=>setLogged(true)}/>;
 return <div className="app"><aside><Logo/><div className="admin"><User size={24}/><div><b>Administrador</b><p>admin@gpsruta.cl</p></div></div><nav>{[["dashboard","Dashboard",Eye],["clientes","Clientes",Users],["facturas","Facturas por cobrar",FileText],["deudas","Deudas / Facturas por pagar",CreditCard],["ingresos","Ingresos",TrendingUp],["egresos","Egresos",TrendingDown],["alertas","Cobros / Recordatorios",Bell]].map(([v,l,I])=><button key={v} onClick={()=>setTab(v)} className={tab===v?"active":""}><I size={20}/>{l}</button>)}</nav><div className="autosave"><CheckCircle size={20}/><div><b>Guardado automático activo</b><p>Último guardado: {saved}</p></div></div><button className="logout" onClick={()=>{sessionStorage.removeItem(SESSION);setLogged(false)}}><LogOut size={19}/>Cerrar sesión</button></aside><main><header><div className="search"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente, factura o giro..."/></div><div className="chips"><select value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} className="monthSelect">{months.map(m=><option key={m} value={m}>{ml(m)}</option>)}</select><span><CalendarDays size={17}/>{clock.toLocaleDateString("es-CL")}</span><span><Clock size={17}/>{clock.toLocaleTimeString("es-CL",{hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span><span className="green"><Save size={17}/>Guardado automático</span></div></header>
 <section className="backupToolbar">
   <button className="backupBtn saveManual" onClick={manualSave}><HardDrive size={17}/>Guardar ahora</button>
   <button className="backupBtn" onClick={exportBackup}><Download size={17}/>Respaldar</button>
-  <label className="backupBtn importBtn"><Upload size={17}/>Importar respaldo<input type="file" accept=".json" onChange={e=>importBackup(e.target.files?.[0])}/></label><button className="backupBtn reportBtn" onClick={exportFinancialReport}>📊 Descargar informe Excel</button><span className={`supabaseStatusBadge ${supabase?"ok":"bad"}`}>{supabase?"🟢 Supabase conectado":"🔴 Supabase desconectado"}</span><span className="emailConfigured">📧 Correo cobranza: {SENDER_EMAIL}</span><span className={`emailStatus ${emailSending?"sending":""}`}>{emailSending?"📤 Enviando correo...":"✅ Outlook automático listo"}</span>
+  <label className="backupBtn importBtn"><Upload size={17}/>Importar respaldo<input type="file" accept=".json" onChange={e=>importBackup(e.target.files?.[0])}/></label><button className="backupBtn reportBtn" onClick={exportExcelCompletoGPSRUTA}>📊 Descargar informe Excel completo</button><span className={`supabaseStatusBadge ${supabase?"ok":"bad"}`}>{supabase?"🟢 Supabase conectado":"🔴 Supabase desconectado"}</span><span className="emailConfigured">📧 Correo cobranza: {SENDER_EMAIL}</span><span className={`emailStatus ${emailSending?"sending":""}`}>{emailSending?"📤 Enviando correo...":"✅ Outlook automático listo"}</span>
 </section>
 <section className="kpis"><K t="Ingresos del mes" v={money(stats.ingresos)} s={ml(selectedMonth)} icon={TrendingUp}/><K t="Egresos del mes" v={money(stats.egresos)} s={ml(selectedMonth)} icon={TrendingDown} tone="red"/><K t="Deudas por pagar" v={money(stats.deudas)} s="Según vencimiento" icon={CreditCard} tone="gold"/><K t="Facturas pendientes" v={money(stats.pend)} s="Por cobrar" icon={FileText} tone="blue"/><K t="Facturas vencidas" v={stats.venc.length} s="Cantidad mensual" icon={AlertTriangle} tone="red"/></section>
 {tab==="dashboard"&&<section className="gridDash dashboard3d"><div className="card chartPro wide holoCard mainHolo"><div className="holoBadge">HOLOGRAPHIC FINANCE PANEL</div><h2>Resumen financiero mensual 3D</h2><div className="chart compact hologramChart"><ResponsiveContainer><ComposedChart data={monthly} margin={{top:12,right:18,left:0,bottom:0}}><CartesianGrid stroke="rgba(255,255,255,.07)" vertical={false}/><XAxis dataKey="mes" stroke="#ccc" tick={{fontSize:12}}/><YAxis stroke="#ccc" tickFormatter={v=>`${Math.round(v/1000000)}M`} tick={{fontSize:12}}/><Tooltip formatter={v=>money(v)} contentStyle={{background:"#050505",border:"1px solid #FFD43B",borderRadius:"12px"}}/><Legend wrapperStyle={{fontSize:12}}/><Bar dataKey="ingresos" name="Ingresos" fill="#7CFC00" radius={[8,8,0,0]} barSize={20}/><Bar dataKey="egresos" name="Egresos" fill="#ff3131" radius={[8,8,0,0]} barSize={20}/><Bar dataKey="deudas" name="Deudas" fill="#FFD43B" radius={[8,8,0,0]} barSize={20}/><Line type="monotone" dataKey="saldo" name="Saldo neto" stroke="#00a3ff" strokeWidth={4} dot={{r:4,fill:"#00a3ff"}} activeDot={{r:7}}/></ComposedChart></ResponsiveContainer></div></div><div className="card chartPro estadoFacturasCard holoCard sideHolo"><div className="holoBadge small">STATUS SCAN</div><h2>Estado facturas del mes</h2><div className="chart donut hologramDonut"><ResponsiveContainer><PieChart><Pie data={pie} dataKey="value" nameKey="name" innerRadius={42} outerRadius={72} label={({name,value})=>`${name}: ${value}`}>{pie.map((_,i)=><Cell key={i} fill={["#7CFC00","#FFD43B","#ff9500","#ff3131"][i]}/>)}</Pie><Tooltip contentStyle={{background:"#050505",border:"1px solid #00a3ff"}}/></PieChart></ResponsiveContainer></div><div className="estadoFacturasNumeros">{pie.map((p,i)=><div className={`estadoItem estado${i}`} key={p.name}><span></span><b>{p.name}</b><strong>{p.value}</strong></div>)}</div></div><div className="card wide holoCard summaryHolo"><div className="holoBadge small">MONTHLY CORE</div><h2>Resumen del mes seleccionado</h2><div className="summaryGrid">{[[money(stats.ingresos),"Ingresos",""],[money(stats.egresos),"Egresos",""],[money(stats.saldo),"Saldo neto",stats.saldo<0?"negativeBalance":""],[money(stats.deudas),"Deudas por pagar",""],[money(stats.pend),"Facturas por cobrar",""],[stats.venc.length,"Facturas vencidas",""]].map(([a,b,cls])=><div key={b} className={cls}><b>{a}</b><span>{b}</span></div>)}</div></div></section>}
@@ -877,7 +1096,7 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
     <div className="cloudGrid">
       <div><b>{cloudStats.facturas}</b><span>Facturas</span></div>
       <div><b>{cloudStats.clientes}</b><span>Clientes</span></div>
-      <div><b>{cloudStats.pdfs}</b><span>PDFs adjuntos</span></div>
+      <div><b>{cloudStats.pdfs}</b><span>PDFs adjuntos</span></div><div className="cloudNoPdf"><b>{cloudStats.facturasSinPdf||0}</b><span>Facturas sin PDF</span></div>
       <div><b>{cloudStats.mb.toFixed(1)} MB</b><span>Espacio estimado</span></div>
     </div>
     <div className="cloudStorage">
@@ -898,8 +1117,8 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
   <small>Columnas aceptadas: nombre, RAZON SOCIAL, rut, giro, telefono, email, direccion, contacto.</small>
 </div>
 <Fields obj={clientForm} set={setClientForm} fields={["nombre","rut","giro","telefono","email","direccion","contacto"]}/><button className="primary" onClick={saveClient}><Plus size={17}/>Guardar cliente</button></div><div className="cards">{filteredClients.map(c=><div className="card client compactClient" key={c.id}><div className="clientMiniInfo"><b>{c.nombre}</b><span>RUT: {c.rut}</span></div><div className="actions clientMiniActions"><button className="icon edit" onClick={()=>editClient(c)}><Edit size={16}/></button><button className="icon trash" onClick={()=>deleteClient(c.id)}><Trash2 size={16}/></button></div></div>)}</div></section>}
-{tab==="facturas"&&<section className="two"><div className="card invoiceFormSticky"><h2>{editingInvoice?"Editar factura":"Nueva factura por cobrar"}</h2>
-<div className="excelImportBox"><label className="excelBtn">📥 Cargar facturas desde Excel<input type="file" accept=".xlsx,.xls,.csv" onChange={e=>importInvoicesExcel(e.target.files?.[0])}/></label><small>Columnas: factura, rut cliente o cliente, emision, vencimiento, monto, estado, detalle.</small></div><select value={invoiceForm.clienteId} onChange={e=>setInvoiceForm({...invoiceForm,clienteId:e.target.value})}><option value="">Seleccionar cliente</option>{data.clients.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}</select><Fields obj={invoiceForm} set={setInvoiceForm} fields={["factura","emision","vencimiento","monto","detalle"]}/><select value={invoiceForm.estado} onChange={e=>setInvoiceForm({...invoiceForm,estado:e.target.value})}><option>Pendiente</option><option>Vencida</option><option>Pagada</option></select><button className="primary" onClick={saveInvoice}><Plus size={17}/>Guardar factura</button></div><div className="card invoiceListCard">
+{tab==="facturas"&&<section className="two"><div className="card invoiceFormSticky"><h2>{editingInvoice?"Editar factura":"Nueva factura por cobrar"}</h2><div className={`invoiceLoadStatusBox ${invoiceSaving?"saving":invoiceFeedback.startsWith("✅")?"ok":invoiceFeedback.startsWith("❌")?"bad":""}`}>{invoiceSaving?"⏳ Guardando factura en Supabase...":invoiceFeedback||"📄 Complete los datos y presione Guardar factura."}</div>
+<div className="excelImportBox"><label className="excelBtn">📥 Cargar facturas desde Excel<input type="file" accept=".xlsx,.xls,.csv" onChange={e=>handleBulkInvoiceUpload(e.target.files?.[0])}/></label><small>Columnas: factura, rut cliente o cliente, emision, vencimiento, monto, estado, detalle.</small></div><select value={invoiceForm.clienteId} onChange={e=>setInvoiceForm({...invoiceForm,clienteId:e.target.value})}><option value="">Seleccionar cliente</option>{data.clients.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}</select><Fields obj={invoiceForm} set={setInvoiceForm} fields={["factura","emision","vencimiento","monto","detalle"]}/><select value={invoiceForm.estado} onChange={e=>setInvoiceForm({...invoiceForm,estado:e.target.value})}><option>Pendiente</option><option>Vencida</option><option>Pagada</option></select><button className="primary" onClick={saveInvoice} disabled={invoiceSaving}><Plus size={17}/>{invoiceSaving?"Guardando...":"Guardar factura"}</button></div><div className="card invoiceListCard">
 <div className="historyHead"><h2>Listado de facturas por cobrar</h2><small className="requiredAttach">Organizado por carpeta mensual. Recordatorio no requiere adjunto.</small></div>
 <div className="invoiceFolderBar">
   <div><label>Carpeta mes/año</label><select value={invoiceFolderMonth} onChange={e=>setInvoiceFolderMonth(e.target.value)}>{invoiceMonths.map(m=><option key={m} value={m}>{m==="Todas"?"TODAS":ml(m)}</option>)}</select></div>
@@ -922,7 +1141,7 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
 </select>
 <small className="hint">Al vincular una factura/deuda por pagar y guardar el egreso, quedará marcada como Pagada.</small>
 <button className="primary gold" onClick={saveExpense}><Plus size={17}/>Guardar egreso</button></div><div className="card compactHistoryCard"><div className="historyHead"><h2>Historial de egresos por fecha</h2><div><button className="smallDanger" onClick={()=>deleteMonthHistory("expenses")}>Eliminar mes/año</button><button className="smallDanger ghost" onClick={()=>deleteAllHistory("expenses")}>Eliminar todo</button></div></div><HistoryFilters historyQuickFilter={historyQuickFilter} setHistoryQuickFilter={setHistoryQuickFilter} historyMonthFilter={historyMonthFilter} setHistoryMonthFilter={setHistoryMonthFilter} historyStatusFilter={historyStatusFilter} setHistoryStatusFilter={setHistoryStatusFilter} historyMonths={historyMonths}/><Table rows={data.expenses} type="expenses" setData={setData} data={data} onDelete={deleteRecord} quickFilter={historyQuickFilter} monthFilter={historyMonthFilter}/></div></section>}
-{tab==="alertas"&&<section className="alerts"><div className="card reminders compactReminders"><h2><Bell size={20}/>Cobros / Recordatorios</h2>
+{tab==="alertas"&&<section className="alerts"><div className="card reminders compactReminders"><h2><Bell size={20}/>Cobros / Recordatorios</h2><div className="pdfRequiredNotice">🔒 Cobranza bloqueada sin PDF: adjunte la factura antes de enviar WhatsApp o correo.</div>
 <div className="reminderTools">
   <div className="search inner"><Search size={17}/><input value={alertSearch} onChange={e=>setAlertSearch(e.target.value)} placeholder="Buscar factura o cliente..."/></div>
   <select value={reminderStatusFilter} onChange={e=>setReminderStatusFilter(e.target.value)}>
@@ -932,7 +1151,7 @@ return <div className="app"><aside><Logo/><div className="admin"><User size={24}
   </select>
   <div className="reminderCount"><b>{alertInvoices.length}</b><span>alertas</span></div>
 </div>
-<div className="reminderList compactList">{alertInvoices.map(inv=>{let c=client(inv.clienteId),s=ist(inv),Icon=s.I;return <button key={inv.id} className={`reminder compactReminder ${selectedInvoice?.id===inv.id?"selected":""}`} onClick={()=>setSelectedInvoiceId(inv.id)}><Icon className={s.c} size={20}/><div><b>{inv.factura}</b><p>{c?.nombre}</p></div><strong>{money(inv.monto)}</strong><small>{inv.vencimiento}</small></button>})}</div></div><div className="card attach stickyCobroAction"><h2><Paperclip size={20}/>Adjuntar factura</h2>{selectedInvoice?<><div className="selected"><b>{selectedInvoice.factura}</b><p>{selectedClient?.nombre} · {money(selectedInvoice.monto)}</p><small className="requiredAttach">Para usar Enviar factura, primero debe adjuntar la factura. El recordatorio no requiere adjunto.</small></div><label className="drop"><UploadCloud size={32}/><b>Buscar factura en mi PC</b><small>PDF, JPG, PNG, DOCX, XLSX</small><input type="file" onChange={e=>attachFile(selectedInvoice.id,e.target.files?.[0])}/></label>{data.attachments?.[selectedInvoice.id]&&<div className="fileBox"><FileText size={22}/><div><b>{data.attachments[selectedInvoice.id].name}</b><p>{(data.attachments[selectedInvoice.id].size/1024/1024).toFixed(2)} MB</p></div></div>}<div className="actions big"><div className="sendGroup"><b>Recordatorio</b><a className="send whatsapp" href={waReminder(selectedInvoice,selectedClient)} target="_blank"><W/>WhatsApp</a><a className="send mail" href={emailReminder(selectedInvoice,selectedClient)}><Mail size={18}/>Correo manual</a><button className="send autoMail" onClick={()=>sendAutoReminder(selectedInvoice,selectedClient)}>Enviar automático</button></div><div className="sendGroup"><b>Enviar factura</b><a className={`send whatsapp ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} href="#" onClick={(e)=>{e.preventDefault();handleWhatsAppInvoice(selectedInvoice,selectedClient)}}><W/>WhatsApp</a><a className={`send mail ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} href="#" onClick={(e)=>{e.preventDefault();handleManualMailInvoice(selectedInvoice,selectedClient)}}><Mail size={18}/>Correo manual</a><button className={`send autoMail ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} onClick={()=>sendAutoInvoice(selectedInvoice,selectedClient)}>Enviar automático</button></div></div></>:<p>No hay facturas por cobrar.</p>}</div></section>}
+<div className="reminderList compactList">{alertInvoices.map(inv=>{let c=client(inv.clienteId),s=ist(inv),Icon=s.I;return <button key={inv.id} className={`reminder compactReminder ${selectedInvoice?.id===inv.id?"selected":""}`} onClick={()=>setSelectedInvoiceId(inv.id)}><Icon className={s.c} size={20}/><div><b>{inv.factura}</b><p>{c?.nombre}</p></div><strong>{money(inv.monto)}</strong><small>{inv.vencimiento}</small></button>})}</div></div><div className="card attach stickyCobroAction"><h2><Paperclip size={20}/>Adjuntar factura</h2>{selectedInvoice?<><div className="selected"><b>{selectedInvoice.factura}</b><p>{selectedClient?.nombre} · {money(selectedInvoice.monto)}</p><small className="requiredAttach">Para usar Enviar factura, primero debe adjuntar la factura. El recordatorio no requiere adjunto.</small></div><label className="drop"><UploadCloud size={32}/><b>Buscar factura en mi PC</b><small>PDF, JPG, PNG, DOCX, XLSX</small><input type="file" onChange={e=>attachFile(selectedInvoice.id,e.target.files?.[0])}/></label>{data.attachments?.[selectedInvoice.id]&&<div className="fileBox"><FileText size={22}/><div><b>{data.attachments[selectedInvoice.id].name}</b><p>{(data.attachments[selectedInvoice.id].size/1024/1024).toFixed(2)} MB</p></div></div>}<div className="actions big"><div className="sendGroup"><b>Recordatorio</b><a className="send whatsapp" href="#" onClick={e=>{e.preventDefault();if(requirePdfForCobranza(selectedInvoice))window.open(waReminder(selectedInvoice,selectedClient),"_blank")}}><W/>WhatsApp</a><a className="send mail" href="#" onClick={e=>{e.preventDefault();if(requirePdfForCobranza(selectedInvoice))window.location.href=emailReminder(selectedInvoice,selectedClient)}}><Mail size={18}/>Correo manual</a><button className="send autoMail" onClick={()=>{if(requirePdfForCobranza(selectedInvoice))sendAutoReminder(selectedInvoice,selectedClient)}}>Enviar automático</button></div><div className="sendGroup"><b>Enviar factura</b><a className={`send whatsapp ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} href="#" onClick={(e)=>{e.preventDefault();handleWhatsAppInvoice(selectedInvoice,selectedClient)}}><W/>WhatsApp</a><a className={`send mail ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} href="#" onClick={(e)=>{e.preventDefault();handleManualMailInvoice(selectedInvoice,selectedClient)}}><Mail size={18}/>Correo manual</a><button className={`send autoMail ${!data.attachments?.[selectedInvoice.id]?"disabled":""}`} onClick={()=>sendAutoInvoice(selectedInvoice,selectedClient)}>Enviar automático</button></div></div></>:<p>No hay facturas por cobrar.</p>}</div></section>}
 </main></div>}
 function HistoryFilters({historyQuickFilter,setHistoryQuickFilter,historyMonthFilter,setHistoryMonthFilter,historyStatusFilter,setHistoryStatusFilter,historyMonths,showStatus=false}){
  return <div className="historyFilters"><input value={historyQuickFilter} onChange={e=>setHistoryQuickFilter(e.target.value)} placeholder="Buscar en historial..."/><select value={historyMonthFilter} onChange={e=>setHistoryMonthFilter(e.target.value)}>{historyMonths.map(m=><option key={m} value={m}>{m==="Todos"?"Todos los meses":ml(m)}</option>)}</select>{showStatus&&<select value={historyStatusFilter} onChange={e=>setHistoryStatusFilter(e.target.value)}><option>Todos</option><option>Pendiente</option><option>Pagada</option><option>Vencida</option></select>}<button onClick={()=>{setHistoryQuickFilter("");setHistoryMonthFilter("Todos");setHistoryStatusFilter("Todos")}}>Limpiar</button></div>}
@@ -947,6 +1166,6 @@ function Table({rows,type,setData,data,onDelete=()=>{},quickFilter="",monthFilte
   .filter(r=>statusFilter==="Todos"||String(r.estado||"").toLowerCase()===String(statusFilter).toLowerCase())
   .sort((a,b)=>(b.fecha||b.vencimiento).localeCompare(a.fecha||a.vencimiento));
  let total=sorted.reduce((s,r)=>s+(+r.monto||0),0);
- return <div className="historyBox"><div className="historyMiniStats"><b>{sorted.length}</b><span>registros</span><strong>{money(total)}</strong></div><div className="tableWrap historyScroll"><table><thead><tr><th>Fecha</th><th>Mes/Año</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>{sorted.map(r=><tr key={r.id}><td>{r.fecha||r.vencimiento}</td><td>{ml(mk(r.fecha||r.vencimiento))}</td><td>{r.categoria}{r.proveedor&&<small>{r.proveedor}</small>}{r.emailProveedor&&<small>{r.emailProveedor}</small>}</td><td>{r.descripcion}{r.estado&&<small>Estado: {r.estado}</small>}</td><td>{money(r.monto)}</td><td>{type==="debts"&&<a className="icon mail" href={debtEmail(r)} title="Correo manual deuda"><Mail size={17}/></a>}{type==="debts"&&typeof sendAutoDebt==="function"&&<button className="icon autoMailIcon" onClick={()=>sendAutoDebt(r)} title="Enviar deuda automático">AUTO</button>}<button className="icon trash" onClick={()=>onDelete(type,r.id)}><Trash2 size={17}/></button></td></tr>)}</tbody></table></div></div>}
+ return <div className="historyBox"><div className="historyMiniStats"><b>{sorted.length}</b><span>registros</span><strong>{money(total)}</strong></div><div className="tableWrap historyScroll"><table><thead><tr><th>Fecha</th><th>Mes/Año</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Acciones</th></tr></thead><tbody>{sorted.map(r=><tr key={r.id}><td>{r.fecha||r.vencimiento}</td><td>{ml(mk(r.fecha||r.vencimiento))}</td><td>{r.categoria}{r.proveedor&&<small>{r.proveedor}</small>}{r.emailProveedor&&<small>{r.emailProveedor}</small>}</td><td>{r.descripcion}{r.estado&&<small>Estado: {r.estado}</small>}</td><td>{money(r.monto)}</td><td>{type==="debts"&&<a className={`icon mail ${!data.attachments?.[i.id]?"blockedPdf":""}`} href={debtEmail(r)} title="Correo manual deuda"><Mail size={17}/></a>}{type==="debts"&&typeof sendAutoDebt==="function"&&<button className="icon autoMailIcon" onClick={()=>sendAutoDebt(r)} title="Enviar deuda automático">AUTO</button>}<button className="icon trash" onClick={()=>onDelete(type,r.id)}><Trash2 size={17}/></button></td></tr>)}</tbody></table></div></div>}
 
 createRoot(document.getElementById("root")).render(<ErrorBoundary><App/></ErrorBoundary>);

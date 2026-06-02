@@ -2035,3 +2035,96 @@ select:focus{
 .aiColumns h3:has(+ p){
   margin-top:10px;
 }
+
+
+/* ESTADO VISIBLE DE CARGA DE FACTURAS */
+.invoiceLoadStatusBox,
+.bulkInvoiceStatusBox{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,212,59,.28);
+  background:rgba(255,212,59,.07);
+  color:#fff4c2;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.invoiceLoadStatusBox.saving,
+.bulkInvoiceStatusBox.saving{
+  border-color:rgba(0,255,210,.38);
+  background:rgba(0,255,210,.08);
+  color:#00ffd2;
+  box-shadow:0 0 18px rgba(0,255,210,.12);
+}
+.invoiceLoadStatusBox.ok,
+.bulkInvoiceStatusBox.ok{
+  border-color:rgba(124,252,0,.40);
+  background:rgba(124,252,0,.09);
+  color:#7CFC00;
+}
+.invoiceLoadStatusBox.bad,
+.bulkInvoiceStatusBox.bad{
+  border-color:rgba(255,49,49,.42);
+  background:rgba(255,49,49,.10);
+  color:#ff5757;
+}
+button:disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+}
+
+
+/* BLOQUEO DE COBRANZA SIN PDF */
+.cloudNoPdf{
+  border-color:rgba(255,49,49,.35)!important;
+  background:rgba(255,49,49,.08)!important;
+}
+.cloudNoPdf b{
+  color:#ff5757!important;
+  text-shadow:0 0 14px rgba(255,49,49,.45)!important;
+}
+.pdfRequiredNotice{
+  margin:8px 0 12px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,49,49,.35);
+  background:rgba(255,49,49,.09);
+  color:#ffd6d6;
+  font-size:12px;
+  font-weight:900;
+}
+.blockedPdf{
+  opacity:.42!important;
+  filter:grayscale(1);
+  border-color:rgba(255,49,49,.45)!important;
+  position:relative;
+}
+.blockedPdf::after{
+  content:"PDF";
+  position:absolute;
+  top:-9px;
+  right:-7px;
+  font-size:8px;
+  color:#ff5757;
+  font-weight:900;
+}
+.noPdfDashboard{
+  margin:12px 0;
+  border-color:rgba(255,49,49,.35)!important;
+  background:rgba(255,49,49,.08)!important;
+}
+.noPdfDashboard b{
+  display:block;
+  font-size:34px;
+  color:#ff5757;
+}
+.noPdfDashboard span{
+  color:#ffd6d6;
+  text-transform:uppercase;
+  font-size:12px;
+}
+
+.reportBtn{
+  font-weight:900;
+}
